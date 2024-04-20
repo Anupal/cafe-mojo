@@ -206,7 +206,25 @@ class DatabaseConnection:
     #     return self.engine and self.engine.connect()
 
     def get_session(self, read_only=False):
-        # if not self._is_connected():
+        # if utils.SINGLE_DATABASE:
+            for _ in range(5):
+                try:
+                    local_engine = create_engine(utils.DB_URL, echo=False)
+                    connection = local_engine.connect()
+                    connection.close()
+                    print("Database connection successful!")
+                    break
+                except Exception as e:
+                    print("ERROR: Database connection failed!")
+                    print(e)
+                    print("retrying in 5 seconds.")
+                    sleep(5)
+                    local_engine = None
+            if not local_engine:
+                print("Unable to establish database connection after 5 attemps, exiting...")
+                exit(1)
+            self.engine = local_engine
+        elif not self._is_connected():
         if read_only:
             self._connect_to_any()
         else:
