@@ -1,7 +1,10 @@
 from time import sleep
+
+from psycopg2 import pool
+
 import utils
 
-from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey, Table, DateTime
+from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey, Table, DateTime, text
 from sqlalchemy.orm import relationship, declarative_base, sessionmaker
 from datetime import datetime
 
@@ -46,15 +49,15 @@ class Transaction(Base):
 
     def to_dict(self):
         return {
-                "transaction_id": self.transaction_id,
-                "user_id": self.user_id,
-                "group_id": self.group_id,
-                "timestamp": self.timestamp,
-                "store": self.store,
-                "total": self.total,
-                "points_redeemed": self.points_redeemed,
-                "points_awarded": self.points_awarded,
-            }
+            "transaction_id": self.transaction_id,
+            "user_id": self.user_id,
+            "group_id": self.group_id,
+            "timestamp": self.timestamp,
+            "store": self.store,
+            "total": self.total,
+            "points_redeemed": self.points_redeemed,
+            "points_awarded": self.points_awarded,
+        }
 
 
 class Item(Base):
@@ -62,6 +65,7 @@ class Item(Base):
     item_id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String)
     price = Column(Float)
+
 
 # Define function to add items if they do not exist
 def add_items(session):
@@ -107,7 +111,6 @@ class DatabaseConnection:
         self.engine = None
         self.__retries = 5
         self.__retry_wait = 5
-        self.__is_current_connection_read_only = False
         self.__connect_to_primary()
 
     def __connect_to_primary(self):
@@ -124,6 +127,7 @@ class DatabaseConnection:
                     is_in_recovery_or_down = self.__is_database_in_recovery_or_down(each_url)
                     if not is_in_recovery_or_down:
                         self.__primary_ulr = each_url
+                        self.__is_current_connection_read_only = False
                         return
                 sleep(self.__retry_wait)
         raise Exception(f"Connecting to primary failed after {number_of_tries} retries!")
@@ -135,6 +139,7 @@ class DatabaseConnection:
             res = session.query(text('pg_is_in_recovery()')).all()
             is_in_recovery = res[0][0]
             session.close()
+            self.__is_current_connection_read_only = True
             return is_in_recovery
         except Exception as e:
             print(f"Failed to connect to database: {e}")
