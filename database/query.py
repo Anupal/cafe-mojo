@@ -1,8 +1,9 @@
 import math
-from database.models import User, Group, Transaction, Item, TransactionItem, session
+from database.models import User, Group, Transaction, Item, TransactionItem, db_connection
 
 
 def add_user(user_name, password):
+    session = db_connection.get_session()
     existing_user = session.query(User).filter_by(user_name=user_name).first()
     if existing_user:
         print("Username already exists!")
@@ -15,6 +16,7 @@ def add_user(user_name, password):
 
 
 def add_group(owner_id, name):
+    session = db_connection.get_session()
     # First, create the new group without members
     new_group = Group(name=name, owner_id=owner_id)
 
@@ -36,6 +38,7 @@ def add_group(owner_id, name):
 
 
 def authenticate_user(user_name, password):
+    session = db_connection.get_session()
     user = session.query(User).filter_by(user_name=user_name, password=password).first()
     if user:
         print("Authentication successful!")
@@ -46,6 +49,7 @@ def authenticate_user(user_name, password):
 
 
 def add_item(name, price):
+    session = db_connection.get_session()
     new_item = Item(name=name, price=price)
     session.add(new_item)
     session.commit()
@@ -54,6 +58,7 @@ def add_item(name, price):
 
 
 def add_transaction(user_id, group_id, store, points_redeemed, items):
+    session = db_connection.get_session()
     # Start a transaction to ensure atomicity
     try:
         total = 0
@@ -94,6 +99,7 @@ def add_transaction(user_id, group_id, store, points_redeemed, items):
 
 
 def add_transaction_item(transaction_id, item_id, quantity, item_total):
+    session = db_connection.get_session()
     new_transaction_item = TransactionItem(transaction_id=transaction_id, item_id=item_id, quantity=quantity, item_total=item_total)
     session.add(new_transaction_item)
     print(f"Transaction item added to transaction {transaction_id} with item ID {item_id}.")
@@ -101,6 +107,7 @@ def add_transaction_item(transaction_id, item_id, quantity, item_total):
 
 
 def add_transaction_entry(user_id, group_id, store, total, points_redeemed):
+    session = db_connection.get_session()
     # Check if the group has enough points
     group = session.query(Group).filter_by(group_id=group_id).one()
     if group.points < points_redeemed:
@@ -139,6 +146,7 @@ def add_transaction_entry(user_id, group_id, store, total, points_redeemed):
 
 
 def get_user_details(user_id):
+    session = db_connection.get_session(read_only=True)
     user = session.query(User).filter_by(user_id=user_id).first()
     if not user:
         print("User not found!")
@@ -147,6 +155,7 @@ def get_user_details(user_id):
 
 
 def get_user_details_by_username(user_name):
+    session = db_connection.get_session(read_only=True)
     user = session.query(User).filter_by(user_name=user_name).first()
     if not user:
         print("User not found!")
@@ -155,6 +164,7 @@ def get_user_details_by_username(user_name):
 
 
 def get_group_details(group_id):
+    session = db_connection.get_session(read_only=True)
     group = session.query(Group).filter_by(group_id=group_id).first()
     if not group:
         print("Group not found!")
@@ -172,6 +182,7 @@ def get_group_details(group_id):
 
 
 def add_member_to_group(user_id, group_id):
+    session = db_connection.get_session()
     group = session.query(Group).filter_by(group_id=group_id).first()
     if not group:
         print("Group not found!")
@@ -193,19 +204,23 @@ def add_member_to_group(user_id, group_id):
 
 
 def get_item(item_id):
+    session = db_connection.get_session(read_only=True)
     return session.query(Item).filter_by(item_id=item_id).first()
 
 
 def get_items():
+    session = db_connection.get_session(read_only=True)
     items = session.query(Item).all()
     return items
 
 
 def get_user_transactions(user_id):
+    session = db_connection.get_session(read_only=True)
     transactions = session.query(Transaction).filter_by(user_id=user_id).all()
     return transactions
 
 
 def get_group_transactions(group_id):
+    session = db_connection.get_session(read_only=True)
     transactions = session.query(Transaction).filter_by(group_id=group_id).all()
     return transactions
