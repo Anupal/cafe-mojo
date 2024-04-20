@@ -2,7 +2,7 @@ import os
 
 SINGLE_DATABASE = False
 
-DB_CLUSTER_URLS = ["postgresql://postgres:password@localhost:5430/cafe_mojo", "postgresql://postgres:password@localhost:5431/cafe_mojo"]
+# DB_CLUSTER_URLS = ["postgresql://postgres:password@localhost:5430/cafe_mojo", "postgresql://postgres:password@localhost:5431/cafe_mojo"]
 
 # DB_URL = "sqlite:///./database/sqlite.db"
 # DB_URL = "postgresql://user:password@localhost:5432/cafe_mojo"
@@ -20,4 +20,20 @@ def get_db_url():
         exit()
     return f"postgresql://{user}:{password}@{host}:{port}/{db}"
 
+def get_db_urls():
+    user = os.environ.get("DB_USER")
+    hosts = os.environ.get("DB_HOSTS")
+    password = os.environ.get("DB_PASSWORD")
+    ports = os.environ.get("DB_PORTS")
+    db = os.environ.get("DB_DATABASE")
+
+    if not user or not hosts or not password or not ports or not db:
+        print("ERROR: Environment variables not set properly -> DB_HOSTS, DB_PORTS, DB_USER, DB_PASSWORD, DB_DATABASE")
+        exit()
+    db_urls = []
+    for each_index in range(len(hosts)):
+        db_urls.append(f"postgresql://{user}:{password}@{hosts[each_index]}:{ports[each_index]}/{db}")
+    return db_urls
+
 DB_URL = get_db_url()
+DB_CLUSTER_URLS = get_db_urls()
