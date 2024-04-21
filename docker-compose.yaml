@@ -1,3 +1,20 @@
+globals:
+  &region-connectivity
+  # All regions
+  REGIONS: "R1,R2"
+  # EUW DETAILS
+  R1_DB_HOSTS: euw_primary,euw_secondary
+  R1_DB_PORTS: 5432,5432
+  R1_DB_USER: postgres
+  R1_DB_PASSWORD: password
+  R1_DB_DATABASE: cafe_mojo
+  # USW DETAILS
+  R2_DB_HOSTS: usw_primary,usw_secondary
+  R2_DB_PORTS: 5432,5432
+  R2_DB_USER: postgres
+  R2_DB_PASSWORD: password
+  R2_DB_DATABASE: cafe_mojo
+
 services:
   euw_primary:
     hostname: euw-01
@@ -128,18 +145,8 @@ services:
       context: .
       dockerfile: ./infra/api/API.Dockerfile
     environment:
-      # HOME DETAILS
-      HOME_DB_HOSTS: euw_primary,euw_secondary
-      HOME_DB_PORTS: 5432,5432
-      HOME_DB_USER: postgres
-      HOME_DB_PASSWORD: password
-      HOME_DB_DATABASE: cafe_mojo
-      # PEER DETAILS
-      PEER_DB_HOSTS: usw_primary,usw_secondary
-      PEER_DB_PORTS: 5432,5432
-      PEER_DB_USER: postgres
-      PEER_DB_PASSWORD: password
-      PEER_DB_DATABASE: cafe_mojo
+      REGION_ID: R1
+      <<: *region-connectivity
     deploy:
       replicas: 1
     networks:
@@ -165,18 +172,8 @@ services:
       context: .
       dockerfile: ./infra/api/API.Dockerfile
     environment:
-      # HOME DETAILS
-      HOME_DB_HOSTS: usw_primary,usw_secondary
-      HOME_DB_PORTS: 5432,5432
-      HOME_DB_USER: postgres
-      HOME_DB_PASSWORD: password
-      HOME_DB_DATABASE: cafe_mojo
-      # PEER DETAILS
-      PEER_DB_HOSTS: euw_primary,euw_secondary
-      PEER_DB_PORTS: 5432,5432
-      PEER_DB_USER: postgres
-      PEER_DB_PASSWORD: password
-      PEER_DB_DATABASE: cafe_mojo
+      REGION_ID: R2
+      <<: *region-connectivity
     deploy:
       replicas: 1
     networks:
