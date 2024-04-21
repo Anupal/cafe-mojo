@@ -1,5 +1,7 @@
 import math
-from database.models import User, Group, Transaction, Item, TransactionItem, home_db_connection, peer_db_connection
+import utils
+from database.models import User, Group, Transaction, Item, TransactionItem, home_db_connection, peer_db_connection, \
+    GroupMemberMR
 
 
 def add_user(user_name, password):
@@ -16,12 +18,11 @@ def add_user(user_name, password):
     return new_user
 
 
-def add_group(owner_id, name):
+def add_group(owner_id, name, multi_region):
     home_db_session = home_db_connection.get_session()
-    peer_db_session = peer_db_connection.get_session()
 
     # First, create the new group without members
-    new_group = Group(name=name, owner_id=owner_id)
+    new_group = Group(name=name, owner_id=owner_id, multi_region=multi_region)
 
     # Before adding the new group to the session, find the owner by ID
     owner = home_db_session.query(User).filter_by(user_id=owner_id).first()
@@ -29,12 +30,22 @@ def add_group(owner_id, name):
         print("Owner not found.")
         return None
 
-    # Add the owner to the group's members
-    new_group.members.append(owner)
-
-    # Add the new group to the session and commit
-    home_db_session.add(new_group)
-    home_db_session.commit()
+    if multi_region:
+        mr_mapping = GroupMemberMR(
+            group_id=new_group.group_id,
+            user_id=owner.user_id,
+            group_region_id=utils.HOME_REGION_ID,
+            user_region_id=utils.PEER_REGION_ID
+        )
+        home_db_session.add(new_group)
+        home_db_session.add(mr_mapping)
+        home_db_session.commit()
+    else:
+        # Add the owner to the group's members
+        new_group.members.append(owner)
+        # Add the new group to the session and commit
+        home_db_session.add(new_group)
+        home_db_session.commit()
 
     print(f"Group {name} added with ID {new_group.group_id}, owner ID {owner_id} added as a member.")
     return new_group
@@ -190,8 +201,14 @@ def get_group_details(group_id):
     if not group:
         print("Group not found!")
         return None
-    # Load members lazily
-    members = [member.user_id for member in group.members]
+
+    # if multi region entry, get members from group_member
+    if group.multi_region:
+        group_member_mr_mapping = home_db_session.query(GroupMemberMR).filter_by(group_id=group_id).all()
+        members = [member.user_id for member in group_member_mr_mapping]
+    else:
+        # Load members lazily
+        members = [member.user_id for member in group.members]
     group_details = {
         "group_id": group.group_id,
         "name": group.name,

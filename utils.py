@@ -29,3 +29,10 @@ def get_db_urls(home=True):
 
 HOME_DB_CLUSTER_URLS = get_db_urls(True)
 PEER_DB_CLUSTER_URLS = get_db_urls(False)
+
+if "euw" in os.environ.get(f"HOME_DB_HOSTS"):
+    HOME_REGION_ID = 0
+    PEER_REGION_ID = 1
+else:
+    HOME_REGION_ID = 1
+    PEER_REGION_ID = 0

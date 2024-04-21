@@ -1,7 +1,8 @@
 from time import sleep
 import utils
+import random
 
-from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey, Table, DateTime, text, pool
+from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey, Table, DateTime, text, pool, Boolean
 from sqlalchemy.orm import relationship, declarative_base, sessionmaker
 from datetime import datetime
 
@@ -13,22 +14,48 @@ group_member_association = Table('group_member', Base.metadata,
                                  Column('group_id', Integer, ForeignKey('group.group_id'))
                                  )
 
+def _gen_id():
+    return random.randint(10000000, 99999999)
 
 class User(Base):
     __tablename__ = 'user'
-    user_id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, primary_key=True, autoincrement=False)
     user_name = Column(String, unique=True)
     password = Column(String)
     groups = relationship('Group', secondary=group_member_association, back_populates='members')
 
+    def __init__(self, user_name, password):
+        super(User, self).__init__()
+        self.user_id = _gen_id()
+        self.user_name = user_name
+        self.password = password
+
 
 class Group(Base):
     __tablename__ = 'group'
-    group_id = Column(Integer, primary_key=True, autoincrement=True)
+    group_id = Column(Integer, primary_key=True, autoincrement=False)
     name = Column(String)
     owner_id = Column(Integer, ForeignKey('user.user_id'))
     points = Column(Integer, default=0)
+    multi_region = Boolean()
     members = relationship('User', secondary=group_member_association, back_populates='groups')
+
+    def __init__(self, name, owner_id, multi_region):
+        super(Group, self).__init__()
+        self.group_id = _gen_id()
+        self.name = name
+        self.owner_id = owner_id
+        self.points = 0
+        self.multi_region = multi_region
+
+
+class GroupMemberMR(Base):
+    __tablename__ = 'group_member_mr'
+    group_id = Column(Integer)
+    user_id = Column(Integer)
+    group_region_id = Column(Integer)
+    user_region_id = Column(Integer)
+    member_id = Column(Integer, primary_key=True, autoincrement=True)
 
 
 class Transaction(Base):
@@ -46,15 +73,15 @@ class Transaction(Base):
 
     def to_dict(self):
         return {
-                "transaction_id": self.transaction_id,
-                "user_id": self.user_id,
-                "group_id": self.group_id,
-                "timestamp": self.timestamp,
-                "store": self.store,
-                "total": self.total,
-                "points_redeemed": self.points_redeemed,
-                "points_awarded": self.points_awarded,
-            }
+            "transaction_id": self.transaction_id,
+            "user_id": self.user_id,
+            "group_id": self.group_id,
+            "timestamp": self.timestamp,
+            "store": self.store,
+            "total": self.total,
+            "points_redeemed": self.points_redeemed,
+            "points_awarded": self.points_awarded,
+        }
 
 
 class Item(Base):
@@ -62,6 +89,7 @@ class Item(Base):
     item_id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String)
     price = Column(Float)
+
 
 # Define function to add items if they do not exist
 def add_items(session):

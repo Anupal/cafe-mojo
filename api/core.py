@@ -114,6 +114,14 @@ def get_items():
 def create_group():
     current_user = get_jwt_identity()
     group_name = request.json.get('name', None)
+    multi_region = request.json.get('multi_region', None)
+    # multi_region = False if not multi_region or multi_region == 'true' else False
+    if multi_region == 'true':
+        multi_region = True
+    elif not multi_region or multi_region == 'false':
+        multi_region = False
+    else:
+        return jsonify({"msg": "Invalid value for 'multi_region', use 'true' or 'false'"}), 400
     # Find the user ID based on the JWT identity
     user = app.config["db_query"].get_user_details_by_username(current_user)
     print("JWT identity: ", current_user)
@@ -121,7 +129,7 @@ def create_group():
 
     if group_name is None or user is None:
         return jsonify({"msg": "Invalid data"}), 400
-    group = app.config["db_query"].add_group(user.user_id, group_name)
+    group = app.config["db_query"].add_group(user.user_id, group_name, multi_region)
     if group:
         return jsonify({"msg": "Group created", "group_id": group.group_id}), 201
     else:
