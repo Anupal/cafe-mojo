@@ -31,15 +31,19 @@ def add_group(owner_id, name, region, multi_region):
         return None
 
     if multi_region:
-        mr_mapping = GroupMemberMR(
-            group_id=new_group.group_id,
-            user_id=owner.user_id,
-            group_region_id=utils.REGIONS_INT[region],
-            user_region_id=utils.REGIONS_INT[region]
-        )
         db_session.add(new_group)
-        db_session.add(mr_mapping)
         db_session.commit()
+
+        for region_i in DB_CONNECTION:
+            db_session_r = DB_CONNECTION[region_i].get_session()
+            mr_mapping = GroupMemberMR(
+                group_id=new_group.group_id,
+                user_id=owner.user_id,
+                group_region_id=utils.REGIONS_INT[region],
+                user_region_id=utils.REGIONS_INT[region]
+            )
+            db_session_r.add(mr_mapping)
+            db_session_r.commit()
     else:
         # Add the owner to the group's members
         new_group.members.append(owner)
@@ -250,14 +254,14 @@ def add_member_to_group(member_id, group_id, member_region, group_region):
         if member_id in members:
             return False, "User already in group!"
 
-        mr_mapping = GroupMemberMR(
-            group_id=group_id,
-            user_id=member_id,
-            group_region_id=utils.REGIONS_INT[group_region],
-            user_region_id=utils.REGIONS_INT[member_region]
-        )
-        for region in DB_CONNECTION:
-            db_session = DB_CONNECTION[region].get_session()
+        for region_i in DB_CONNECTION:
+            db_session = DB_CONNECTION[region_i].get_session()
+            mr_mapping = GroupMemberMR(
+                group_id=group_id,
+                user_id=member_id,
+                group_region_id=utils.REGIONS_INT[group_region],
+                user_region_id=utils.REGIONS_INT[member_region]
+            )
             db_session.add(mr_mapping)
             db_session.commit()
         print(f"User '{member_id}' added to group '{group_id}'.")
