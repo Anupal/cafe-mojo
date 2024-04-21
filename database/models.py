@@ -66,7 +66,7 @@ class GroupMemberMR(Base):
 
 class Transaction(Base):
     __tablename__ = 'transaction'
-    transaction_id = Column(Integer, primary_key=True, autoincrement=True)
+    transaction_id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('user.user_id'))
     group_id = Column(Integer, ForeignKey('group.group_id'))
     timestamp = Column(DateTime, default=datetime.now)
@@ -76,6 +76,17 @@ class Transaction(Base):
     points_awarded = Column(Integer)
     user = relationship("User", backref="transactions")
     group = relationship("Group", backref="transactions")
+
+    def __init__(self, user_id, group_id, store, total, points_redeemed, points_awarded):
+        super(Transaction, self).__init__()
+        self.transaction_id = _gen_id()
+        self.user_id = user_id
+        self.group_id = group_id
+        self.store = store
+        self.total = total
+        self.points_redeemed = points_redeemed
+        self.points_awarded = points_awarded
+        self.timestamp = datetime.now()
 
     def to_dict(self):
         return {
