@@ -4,7 +4,6 @@ from database.models import User, Group, Transaction, Item, TransactionItem, hom
 
 def add_user(user_name, password):
     home_db_session = home_db_connection.get_session()
-    peer_db_session = peer_db_connection.get_session()
 
     existing_user = home_db_session.query(User).filter_by(user_name=user_name).first()
     if existing_user:
@@ -41,11 +40,13 @@ def add_group(owner_id, name):
     return new_group
 
 
-def authenticate_user(user_name, password):
-    home_db_session = home_db_connection.get_session()
-    peer_db_session = peer_db_connection.get_session()
+def authenticate_user(user_name, password, home):
+    if home:
+        db_session = home_db_connection.get_session()
+    else:
+        db_session = peer_db_connection.get_session()
 
-    user = home_db_session.query(User).filter_by(user_name=user_name, password=password).first()
+    user = db_session.query(User).filter_by(user_name=user_name, password=password).first()
     if user:
         print("Authentication successful!")
         return user

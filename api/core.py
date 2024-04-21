@@ -16,7 +16,9 @@ jwt = JWTManager(app)
 def login():
     username = request.json.get('username', None)
     password = request.json.get('password', None)
-    user = app.config["db_query"].authenticate_user(username, password)
+    home = request.json.get('home', None)
+    home = True if not home or home == 'true' else False
+    user = app.config["db_query"].authenticate_user(username, password, home)
     if user:
         access_token = create_access_token(identity=username)
         return jsonify(access_token=access_token), 200
