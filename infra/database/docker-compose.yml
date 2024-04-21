@@ -11,7 +11,7 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=cafe_mojo
+      - POSTGRES_DB=postgres
       - REPMGR_PASSWORD=otherPassword
       - REPMGR_PRIMARY_HOST=euw-01
       - REPMGR_PARTNER_NODES=euw-01,euw-02
@@ -40,7 +40,7 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=cafe_mojo
+      - POSTGRES_DB=postgres
       - REPMGR_PASSWORD=otherPassword
       - REPMGR_PRIMARY_HOST=euw-01
       - REPMGR_PARTNER_NODES=euw-01,euw-02
@@ -69,7 +69,7 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=cafe_mojo
+      - POSTGRES_DB=postgres
       - REPMGR_PASSWORD=otherPassword
       - REPMGR_PRIMARY_HOST=usw-01
       - REPMGR_PARTNER_NODES=usw-01,usw-02
@@ -98,7 +98,7 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=cafe_mojo
+      - POSTGRES_DB=postgres
       - REPMGR_PASSWORD=otherPassword
       - REPMGR_PRIMARY_HOST=usw-01
       - REPMGR_PARTNER_NODES=usw-01,usw-02
