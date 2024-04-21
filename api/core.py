@@ -48,9 +48,10 @@ def get_user_groups():
         return jsonify({"msg": "User not found"}), 404
 
     # Assuming a backref 'groups' in User model for groups the user is a member of
-    groups = user.groups
-    groups_data = [{"group_id": group.group_id, "name": group.name, "owner_id": group.owner_id} for group in groups]
-    return jsonify(groups_data), 200
+    groups = app.config["db_query"].get_user_groups_by_username(current_user_username)
+    # groups = user.groups
+    # groups_data = [{"group_id": group.group_id, "name": group.name, "owner_id": group.owner_id} for group in groups]
+    return jsonify(groups), 200
 
 
 @app.route('/transaction/add', methods=['POST'])
@@ -115,7 +116,6 @@ def create_group():
     current_user = get_jwt_identity()
     group_name = request.json.get('name', None)
     multi_region = request.json.get('multi_region', None)
-    # multi_region = False if not multi_region or multi_region == 'true' else False
     if multi_region == 'true':
         multi_region = True
     elif not multi_region or multi_region == 'false':
@@ -142,16 +142,30 @@ def add_group_member():
     data = request.get_json()
     group_id = data.get('group_id')
     user_name = data.get('user_name')
+    user_region = request.json.get('user_region', "home")
+    multi_region = request.json.get('multi_region', None)
+    if multi_region == 'true':
+        multi_region = True
+    elif not multi_region or multi_region == 'false':
+        multi_region = False
+    else:
+        return jsonify({"msg": "Invalid value for 'multi_region', use 'true' or 'false'"}), 400
 
-    user = app.config["db_query"].get_user_details_by_username(user_name)
+    if user_region not in ('home', 'peer'):
+        return jsonify({"msg": "Invalid value for 'user_region', use 'home' or 'peer'"}), 400
+
+    if not multi_region and user_region == "peer":
+        return jsonify({"msg": "Cannot add user from peer region to a non multi-region user"}), 400
+
+    user = app.config["db_query"].get_user_details_by_username(user_name, user_region)
     if not user:
         return jsonify({"msg": "User not found"}), 404
 
-    success = app.config["db_query"].add_member_to_group(user.user_id, group_id)
+    success, msg = app.config["db_query"].add_member_to_group(user.user_id, group_id, user_region, multi_region)
     if success:
         return jsonify({"msg": "Member added to group successfully"}), 201
     else:
-        return jsonify({"msg": "Failed to add member to group"}), 500
+        return jsonify({"msg": f"Failed to add member to group - '{msg}'"}), 500
 
 
 @app.route('/group/<int:group_id>', methods=['GET'])

@@ -37,7 +37,7 @@ class Group(Base):
     name = Column(String)
     owner_id = Column(Integer, ForeignKey('user.user_id'))
     points = Column(Integer, default=0)
-    multi_region = Boolean()
+    multi_region = Column(Boolean, default=False)
     members = relationship('User', secondary=group_member_association, back_populates='groups')
 
     def __init__(self, name, owner_id, multi_region):
