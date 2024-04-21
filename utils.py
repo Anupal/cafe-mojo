@@ -7,7 +7,6 @@ SINGLE_DATABASE = False
 # DB_URL = "sqlite:///./database/sqlite.db"
 # DB_URL = "postgresql://user:password@localhost:5432/cafe_mojo"
 
-#TODO: Do something like this for multiple URLS
 def get_db_url():
     user = os.environ.get("DB_USER")
     host = os.environ.get("DB_HOST")
