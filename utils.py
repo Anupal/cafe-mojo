@@ -22,9 +22,9 @@ def get_db_url():
 
 def get_db_urls():
     user = os.environ.get("DB_USER")
-    hosts = os.environ.get("DB_HOSTS")
+    hosts = os.environ.get("DB_HOSTS").split(",")
     password = os.environ.get("DB_PASSWORD")
-    ports = os.environ.get("DB_PORTS")
+    ports = os.environ.get("DB_PORTS").split(",")
     db = os.environ.get("DB_DATABASE")
 
     if not user or not hosts or not password or not ports or not db:
@@ -34,6 +34,7 @@ def get_db_urls():
     for each_index in range(len(hosts)):
         db_urls.append(f"postgresql://{user}:{password}@{hosts[each_index]}:{ports[each_index]}/{db}")
     return db_urls
-
-DB_URL = get_db_url()
-DB_CLUSTER_URLS = get_db_urls()
+if SINGLE_DATABASE:
+    DB_URL = get_db_url()
+else:
+    DB_CLUSTER_URLS = get_db_urls()

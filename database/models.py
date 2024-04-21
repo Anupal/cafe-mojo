@@ -1,10 +1,8 @@
 from time import sleep
 
-from psycopg2 import pool
-
 import utils
 
-from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey, Table, DateTime, text
+from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey, Table, DateTime, text, pool
 from sqlalchemy.orm import relationship, declarative_base, sessionmaker
 from datetime import datetime
 
