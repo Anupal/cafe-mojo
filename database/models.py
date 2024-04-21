@@ -8,6 +8,7 @@ from sqlalchemy.orm import relationship, declarative_base, sessionmaker
 from datetime import datetime
 
 log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
 
 Base = declarative_base()
 

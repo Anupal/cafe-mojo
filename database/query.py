@@ -5,6 +5,7 @@ from database.models import User, Group, Transaction, Item, TransactionItem, Gro
     HOME_DB_CONNECTION
 
 log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
 
 
 def add_user(user_name, password):
