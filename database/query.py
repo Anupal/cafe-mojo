@@ -82,22 +82,21 @@ def add_item(name, price):
 
 
 def add_transaction(user_id, group_id, store, points_redeemed, items):
-    home_db_session = HOME_DB_CONNECTION.get_session()
-
     # Start a transaction to ensure atomicity
+    home_db_session = HOME_DB_CONNECTION.get_session()
     try:
         total = 0
         for item_data in items:
             item_id = item_data['item_id']
             quantity = item_data['quantity']
-            item = get_item(item_id)
+            item = home_db_session.query(Item).filter_by(item_id=item_id).first()
             if not item:
                 raise Exception("Item not found")
 
             total += item.price * quantity
 
         # Add the transaction
-        transaction = add_transaction_entry(user_id, group_id, store, total, points_redeemed)
+        transaction = add_transaction_entry(home_db_session, user_id, group_id, store, total, points_redeemed)
         if not transaction:
             raise Exception("Failed to add transaction")
 
@@ -106,37 +105,27 @@ def add_transaction(user_id, group_id, store, points_redeemed, items):
         for item_data in items:
             item_id = item_data['item_id']
             quantity = item_data['quantity']
-            item = get_item(item_id)
-
+            item = home_db_session.query(Item).filter_by(item_id=item_id).first()
             if not item:
                 raise Exception("Item not found")
+
             item_total = item.price * quantity
-            transaction_items.append(
-                add_transaction_item(transaction.transaction_id, item_id, quantity, item_total).to_dict()
-            )
+            transaction_item = TransactionItem(transaction_id=transaction.transaction_id, item_id=item_id,
+                                               quantity=quantity,
+                                               item_total=item_total)
+            transaction_items.append(transaction_item.to_dict())
+            home_db_session.add(transaction_item)
         home_db_session.commit()
         return transaction.to_dict(), transaction_items
 
     except Exception as e:
         log.error(f"Failed to add transaction due to {e}")
-        home_db_session.rollback()
         return None, None
 
 
-def add_transaction_item(transaction_id, item_id, quantity, item_total):
-    home_db_session = HOME_DB_CONNECTION.get_session()
-
-    new_transaction_item = TransactionItem(transaction_id=transaction_id, item_id=item_id, quantity=quantity, item_total=item_total)
-    home_db_session.add(new_transaction_item)
-    log.info(f"Transaction item added to transaction {transaction_id} with item ID {item_id}.")
-    return new_transaction_item
-
-
-def add_transaction_entry(user_id, group_id, store, total, points_redeemed):
-    home_db_session = HOME_DB_CONNECTION.get_session()
-
+def add_transaction_entry(db_session, user_id, group_id, store, total, points_redeemed):
     # Check if the group has enough points
-    group = home_db_session.query(Group).filter_by(group_id=group_id).one()
+    group = db_session.query(Group).filter_by(group_id=group_id).one()
     if group.points < points_redeemed:
         log.error("Not enough points in the group to redeem.")
         return None
@@ -165,10 +154,11 @@ def add_transaction_entry(user_id, group_id, store, total, points_redeemed):
         points_redeemed=points_redeemed,
         points_awarded=points_awarded
     )
-    home_db_session.add(new_transaction)
+    db_session.add(new_transaction)
 
-    log.info(f"Transaction added for user {user_id} in group {group_id}. Points redeemed: {points_redeemed}. New group points: {group.points}")
-        
+    log.info(
+        f"Transaction added for user {user_id} in group {group_id}. Points redeemed: {points_redeemed}. New group points: {group.points}")
+
     return new_transaction
 
 
