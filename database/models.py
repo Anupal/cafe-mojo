@@ -14,8 +14,10 @@ group_member_association = Table('group_member', Base.metadata,
                                  Column('group_id', Integer, ForeignKey('group.group_id'))
                                  )
 
+
 def _gen_id():
     return random.randint(10000000, 99999999)
+
 
 class User(Base):
     __tablename__ = 'user'
@@ -200,12 +202,14 @@ class DatabaseConnection:
         return sessionmaker(bind=self.engine)()
 
 
-home_db_connection = DatabaseConnection(utils.HOME_DB_CLUSTER_URLS)
-peer_db_connection = DatabaseConnection(utils.PEER_DB_CLUSTER_URLS)
+DB_CONNECTION = {
+    region_id: DatabaseConnection(url) for region_id, url in utils.REGION_URLS
+}
 
-Base.metadata.create_all(home_db_connection.engine)
-home_db_session = home_db_connection.get_session()
-peer_db_session = peer_db_connection.get_session()
+HOME_DB_CONNECTION = DB_CONNECTION[utils.REGION_ID]
+
+# create all tables
+Base.metadata.create_all(HOME_DB_CONNECTION.engine)
 
 # add menu items
-add_items(home_db_session)
+add_items(HOME_DB_CONNECTION.get_session())
