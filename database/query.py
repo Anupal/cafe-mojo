@@ -1,7 +1,10 @@
+import logging
 import math
 import utils
 from database.models import User, Group, Transaction, Item, TransactionItem, GroupMemberMR, DB_CONNECTION, \
     HOME_DB_CONNECTION
+
+log = logging.getLogger(__name__)
 
 
 def add_user(user_name, password):
@@ -9,12 +12,12 @@ def add_user(user_name, password):
 
     existing_user = home_db_session.query(User).filter_by(user_name=user_name).first()
     if existing_user:
-        print("Username already exists!")
+        log.error("Username already exists!")
         return None
     new_user = User(user_name=user_name, password=password)
     home_db_session.add(new_user)
     home_db_session.commit()
-    print(f"User {user_name} added with ID {new_user.user_id}.")
+    log.info(f"User {user_name} added with ID {new_user.user_id}.")
     return new_user
 
 
@@ -27,7 +30,7 @@ def add_group(owner_id, name, region, multi_region):
     # Before adding the new group to the session, find the owner by ID
     owner = db_session.query(User).filter_by(user_id=owner_id).first()
     if not owner:
-        print("Owner not found.")
+        log.error("Owner not found.")
         return None
 
     if multi_region:
@@ -51,7 +54,7 @@ def add_group(owner_id, name, region, multi_region):
         db_session.add(new_group)
         db_session.commit()
 
-    print(f"Group {name} added with ID {new_group.group_id}, owner ID {owner_id} added as a member.")
+    log.info(f"Group {name} added with ID {new_group.group_id}, owner ID {owner_id} added as a member.")
     return new_group
 
 
@@ -60,10 +63,10 @@ def authenticate_user(user_name, password, region):
 
     user = db_session.query(User).filter_by(user_name=user_name, password=password).first()
     if user:
-        print("Authentication successful!")
+        log.info("Authentication successful!")
         return user
     else:
-        print("Invalid username or password!")
+        log.error("Invalid username or password!")
         return None
 
 
@@ -73,7 +76,7 @@ def add_item(name, price):
     new_item = Item(name=name, price=price)
     home_db_session.add(new_item)
     home_db_session.commit()
-    print(f"Item {name} added with ID {new_item.item_id}.")
+    log.info(f"Item {name} added with ID {new_item.item_id}.")
     return new_item
 
 
@@ -114,7 +117,7 @@ def add_transaction(user_id, group_id, store, points_redeemed, items):
         return transaction.to_dict(), transaction_items
 
     except Exception as e:
-        print(f"Failed to add transaction due to {e}")
+        log.error(f"Failed to add transaction due to {e}")
         home_db_session.rollback()
         return None, None
 
@@ -124,7 +127,7 @@ def add_transaction_item(transaction_id, item_id, quantity, item_total):
 
     new_transaction_item = TransactionItem(transaction_id=transaction_id, item_id=item_id, quantity=quantity, item_total=item_total)
     home_db_session.add(new_transaction_item)
-    print(f"Transaction item added to transaction {transaction_id} with item ID {item_id}.")
+    log.info(f"Transaction item added to transaction {transaction_id} with item ID {item_id}.")
     return new_transaction_item
 
 
@@ -134,7 +137,7 @@ def add_transaction_entry(user_id, group_id, store, total, points_redeemed):
     # Check if the group has enough points
     group = home_db_session.query(Group).filter_by(group_id=group_id).one()
     if group.points < points_redeemed:
-        print("Not enough points in the group to redeem.")
+        log.error("Not enough points in the group to redeem.")
         return None
 
     # Deduct points from group
@@ -163,7 +166,7 @@ def add_transaction_entry(user_id, group_id, store, total, points_redeemed):
     )
     home_db_session.add(new_transaction)
 
-    print(f"Transaction added for user {user_id} in group {group_id}. Points redeemed: {points_redeemed}. New group points: {group.points}")
+    log.info(f"Transaction added for user {user_id} in group {group_id}. Points redeemed: {points_redeemed}. New group points: {group.points}")
         
     return new_transaction
 
@@ -173,7 +176,7 @@ def get_user_details(user_id, region=utils.REGION_ID):
 
     user = db_session.query(User).filter_by(user_id=user_id).first()
     if not user:
-        print("User not found!")
+        log.error("User not found!")
         return None
     return user
 
@@ -182,7 +185,7 @@ def get_user_groups_by_username(user_name, region=utils.REGION_ID):
     db_session = DB_CONNECTION[region].get_session()
     user = db_session.query(User).filter_by(user_name=user_name).first()
     if not user:
-        print("User not found!")
+        log.error("User not found!")
         return None
     sr_groups = [{"group_id": group.group_id, "name": group.name, "owner_id": group.owner_id} for group in user.groups]
     group_member_mr_mapping = db_session.query(GroupMemberMR).filter_by(user_id=user.user_id).all()
@@ -200,7 +203,7 @@ def get_user_details_by_username(user_name, user_region):
 
     user = db_session.query(User).filter_by(user_name=user_name).first()
     if not user:
-        print("User not found!")
+        log.error("User not found!")
         return None
     return user
 
@@ -210,7 +213,7 @@ def get_group_details(group_id, region):
 
     group = db_session.query(Group).filter_by(group_id=group_id).first()
     if not group:
-        print("Group not found!")
+        log.error("Group not found!")
         return None
 
     # if multi region entry, get members from group_member
@@ -235,7 +238,7 @@ def get_group_by_name(group_name, region=utils.REGION_ID):
 
     group = home_db_session.query(Group).filter_by(name=group_name).first()
     if not group:
-        print("Group not found!")
+        log.error("Group not found!")
         return None
 
     return group
@@ -264,7 +267,7 @@ def add_member_to_group(member_id, group_id, member_region, group_region):
             )
             db_session.add(mr_mapping)
             db_session.commit()
-        print(f"User '{member_id}' added to group '{group_id}'.")
+        log.info(f"User '{member_id}' added to group '{group_id}'.")
         return True, None
 
     else:
@@ -275,7 +278,7 @@ def add_member_to_group(member_id, group_id, member_region, group_region):
             return False, "Group is full!"
         group.members.append(member)
         group_db_session.commit()
-        print(f"User {member_id} added to group {group_id}.")
+        log.info(f"User {member_id} added to group {group_id}.")
         return True, None
 
 

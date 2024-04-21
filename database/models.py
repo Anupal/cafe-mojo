@@ -1,3 +1,4 @@
+import logging
 from time import sleep
 import utils
 import random
@@ -5,6 +6,8 @@ import random
 from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey, Table, DateTime, text, pool, Boolean
 from sqlalchemy.orm import relationship, declarative_base, sessionmaker
 from datetime import datetime
+
+log = logging.getLogger(__name__)
 
 Base = declarative_base()
 
@@ -170,7 +173,7 @@ class DatabaseConnection:
             self._is_current_connection_read_only = True
             return is_in_recovery
         except Exception as e:
-            print(f"Failed to connect to database: {e}")
+            log.error(f"Failed to connect to database: {e}")
             return True
 
     def _connect_to_any(self):
@@ -185,7 +188,7 @@ class DatabaseConnection:
                     conn.close()
                     return
                 except Exception as e:
-                    print(f"Failed to connect to database: {e}")
+                    log.error(f"Failed to connect to database: {e}")
         raise Exception(f"Connecting to any database failed after {number_of_tries} retries")
 
     # def _is_connected(self):
