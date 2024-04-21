@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 
+import utils
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -16,9 +17,12 @@ jwt = JWTManager(app)
 def login():
     username = request.json.get('username', None)
     password = request.json.get('password', None)
-    home = request.json.get('home', None)
-    home = True if not home or home == 'true' else False
-    user = app.config["db_query"].authenticate_user(username, password, home)
+
+    region = request.json.get('region', utils.REGION_ID)
+    if region not in utils.REGIONS:
+        return jsonify({'error': f'Invalid region, allowed values - {utils.REGIONS}'}), 400
+
+    user = app.config["db_query"].authenticate_user(username, password, region)
     if user:
         access_token = create_access_token(identity=username)
         return jsonify(access_token=access_token), 200
@@ -43,14 +47,16 @@ def signup():
 @jwt_required()
 def get_user_groups():
     current_user_username = get_jwt_identity()
-    user = app.config["db_query"].get_user_details_by_username(current_user_username)
+
+    region = request.args.get('region', utils.REGION_ID)
+    if region not in utils.REGIONS:
+        return jsonify({'error': f'Invalid region, allowed values - {utils.REGIONS}'}), 400
+
+    user = app.config["db_query"].get_user_details_by_username(current_user_username, region)
     if not user:
         return jsonify({"msg": "User not found"}), 404
 
-    # Assuming a backref 'groups' in User model for groups the user is a member of
-    groups = app.config["db_query"].get_user_groups_by_username(current_user_username)
-    # groups = user.groups
-    # groups_data = [{"group_id": group.group_id, "name": group.name, "owner_id": group.owner_id} for group in groups]
+    groups = app.config["db_query"].get_user_groups_by_username(current_user_username, region)
     return jsonify(groups), 200
 
 
@@ -115,6 +121,11 @@ def get_items():
 def create_group():
     current_user = get_jwt_identity()
     group_name = request.json.get('name', None)
+
+    region = request.json.get('region', utils.REGION_ID)
+    if region not in utils.REGIONS:
+        return jsonify({'error': f'Invalid region, allowed values - {utils.REGIONS}'}), 400
+
     multi_region = request.json.get('multi_region', None)
     if multi_region == 'true':
         multi_region = True
@@ -122,14 +133,13 @@ def create_group():
         multi_region = False
     else:
         return jsonify({"msg": "Invalid value for 'multi_region', use 'true' or 'false'"}), 400
-    # Find the user ID based on the JWT identity
-    user = app.config["db_query"].get_user_details_by_username(current_user)
-    print("JWT identity: ", current_user)
-    print("User details:", user)
 
-    if group_name is None or user is None:
-        return jsonify({"msg": "Invalid data"}), 400
-    group = app.config["db_query"].add_group(user.user_id, group_name, multi_region)
+    # Find the user ID based on the JWT identity
+    user = app.config["db_query"].get_user_details_by_username(current_user, region)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    group = app.config["db_query"].add_group(user.user_id, group_name, region, multi_region)
     if group:
         return jsonify({"msg": "Group created", "group_id": group.group_id}), 201
     else:
@@ -140,28 +150,29 @@ def create_group():
 @jwt_required()
 def add_group_member():
     data = request.get_json()
-    group_id = data.get('group_id')
-    user_name = data.get('user_name')
-    user_region = request.json.get('user_region', "home")
-    multi_region = request.json.get('multi_region', None)
-    if multi_region == 'true':
-        multi_region = True
-    elif not multi_region or multi_region == 'false':
-        multi_region = False
-    else:
-        return jsonify({"msg": "Invalid value for 'multi_region', use 'true' or 'false'"}), 400
 
-    if user_region not in ('home', 'peer'):
-        return jsonify({"msg": "Invalid value for 'user_region', use 'home' or 'peer'"}), 400
+    group_region = request.json.get('region', utils.REGION_ID)
+    if group_region not in utils.REGIONS:
+        return jsonify({'error': f'Invalid group region, allowed values - {utils.REGIONS}'}), 400
 
-    if not multi_region and user_region == "peer":
-        return jsonify({"msg": "Cannot add user from peer region to a non multi-region user"}), 400
+    group_name = data.get('group_name')
+    member_user_name = data.get('member_user_name')
+    member_region = request.json.get('member_region', utils.REGION_ID)
+    if member_region not in utils.REGIONS:
+        return jsonify({'error': f'Invalid member region, allowed values - {utils.REGIONS}'}), 400
 
-    user = app.config["db_query"].get_user_details_by_username(user_name, user_region)
+    group = app.config["db_query"].get_group_by_name(group_name, group_region)
+    if not group:
+        return jsonify({"msg": "Group not found"}), 404
+
+    if not group.multi_region and member_region != group_region:
+        return jsonify({"msg": "Cannot add user from different region to a non multi-region group"}), 400
+
+    user = app.config["db_query"].get_user_details_by_username(member_user_name, member_region)
     if not user:
         return jsonify({"msg": "User not found"}), 404
 
-    success, msg = app.config["db_query"].add_member_to_group(user.user_id, group_id, user_region, multi_region)
+    success, msg = app.config["db_query"].add_member_to_group(user.user_id, group.group_id, member_region, group_region)
     if success:
         return jsonify({"msg": "Member added to group successfully"}), 201
     else:
@@ -171,7 +182,11 @@ def add_group_member():
 @app.route('/group/<int:group_id>', methods=['GET'])
 @jwt_required()
 def get_group(group_id):
-    group_details = app.config["db_query"].get_group_details(group_id)
+    region = request.args.get('region', utils.REGION_ID)
+    if region not in utils.REGIONS:
+        return jsonify({'error': f'Invalid region, allowed values - {utils.REGIONS}'}), 400
+
+    group_details = app.config["db_query"].get_group_details(group_id, region)
     if not group_details:
         return jsonify({"msg": "Group not found"}), 404
 

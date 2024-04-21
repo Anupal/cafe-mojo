@@ -36,7 +36,7 @@ class User(Base):
 class Group(Base):
     __tablename__ = 'group'
     group_id = Column(Integer, primary_key=True, autoincrement=False)
-    name = Column(String)
+    name = Column(String, unique=True)
     owner_id = Column(Integer, ForeignKey('user.user_id'))
     points = Column(Integer, default=0)
     multi_region = Column(Boolean, default=False)
@@ -203,7 +203,7 @@ class DatabaseConnection:
 
 
 DB_CONNECTION = {
-    region_id: DatabaseConnection(url) for region_id, url in utils.REGION_URLS
+    region_id: DatabaseConnection(url) for region_id, url in utils.REGION_URLS.items()
 }
 
 HOME_DB_CONNECTION = DB_CONNECTION[utils.REGION_ID]

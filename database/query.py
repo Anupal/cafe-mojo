@@ -1,11 +1,11 @@
 import math
 import utils
-from database.models import User, Group, Transaction, Item, TransactionItem, home_db_connection, peer_db_connection, \
-    GroupMemberMR
+from database.models import User, Group, Transaction, Item, TransactionItem, GroupMemberMR, DB_CONNECTION, \
+    HOME_DB_CONNECTION
 
 
 def add_user(user_name, password):
-    home_db_session = home_db_connection.get_session()
+    home_db_session = HOME_DB_CONNECTION.get_session()
 
     existing_user = home_db_session.query(User).filter_by(user_name=user_name).first()
     if existing_user:
@@ -18,14 +18,14 @@ def add_user(user_name, password):
     return new_user
 
 
-def add_group(owner_id, name, multi_region):
-    home_db_session = home_db_connection.get_session()
+def add_group(owner_id, name, region, multi_region):
+    db_session = DB_CONNECTION[region].get_session()
 
     # First, create the new group without members
     new_group = Group(name=name, owner_id=owner_id, multi_region=multi_region)
 
     # Before adding the new group to the session, find the owner by ID
-    owner = home_db_session.query(User).filter_by(user_id=owner_id).first()
+    owner = db_session.query(User).filter_by(user_id=owner_id).first()
     if not owner:
         print("Owner not found.")
         return None
@@ -34,28 +34,25 @@ def add_group(owner_id, name, multi_region):
         mr_mapping = GroupMemberMR(
             group_id=new_group.group_id,
             user_id=owner.user_id,
-            group_region_id=utils.HOME_REGION_ID,
-            user_region_id=utils.HOME_REGION_ID
+            group_region_id=utils.REGIONS_INT[region],
+            user_region_id=utils.REGIONS_INT[region]
         )
-        home_db_session.add(new_group)
-        home_db_session.add(mr_mapping)
-        home_db_session.commit()
+        db_session.add(new_group)
+        db_session.add(mr_mapping)
+        db_session.commit()
     else:
         # Add the owner to the group's members
         new_group.members.append(owner)
         # Add the new group to the session and commit
-        home_db_session.add(new_group)
-        home_db_session.commit()
+        db_session.add(new_group)
+        db_session.commit()
 
     print(f"Group {name} added with ID {new_group.group_id}, owner ID {owner_id} added as a member.")
     return new_group
 
 
-def authenticate_user(user_name, password, home):
-    if home:
-        db_session = home_db_connection.get_session()
-    else:
-        db_session = peer_db_connection.get_session()
+def authenticate_user(user_name, password, region):
+    db_session = DB_CONNECTION[region].get_session()
 
     user = db_session.query(User).filter_by(user_name=user_name, password=password).first()
     if user:
@@ -67,8 +64,7 @@ def authenticate_user(user_name, password, home):
 
 
 def add_item(name, price):
-    home_db_session = home_db_connection.get_session()
-    peer_db_session = peer_db_connection.get_session()
+    home_db_session = HOME_DB_CONNECTION.get_session()
 
     new_item = Item(name=name, price=price)
     home_db_session.add(new_item)
@@ -78,8 +74,7 @@ def add_item(name, price):
 
 
 def add_transaction(user_id, group_id, store, points_redeemed, items):
-    home_db_session = home_db_connection.get_session()
-    peer_db_session = peer_db_connection.get_session()
+    home_db_session = HOME_DB_CONNECTION.get_session()
 
     # Start a transaction to ensure atomicity
     try:
@@ -121,8 +116,7 @@ def add_transaction(user_id, group_id, store, points_redeemed, items):
 
 
 def add_transaction_item(transaction_id, item_id, quantity, item_total):
-    home_db_session = home_db_connection.get_session()
-    peer_db_session = peer_db_connection.get_session()
+    home_db_session = HOME_DB_CONNECTION.get_session()
 
     new_transaction_item = TransactionItem(transaction_id=transaction_id, item_id=item_id, quantity=quantity, item_total=item_total)
     home_db_session.add(new_transaction_item)
@@ -131,8 +125,7 @@ def add_transaction_item(transaction_id, item_id, quantity, item_total):
 
 
 def add_transaction_entry(user_id, group_id, store, total, points_redeemed):
-    home_db_session = home_db_connection.get_session()
-    peer_db_session = peer_db_connection.get_session()
+    home_db_session = HOME_DB_CONNECTION.get_session()
 
     # Check if the group has enough points
     group = home_db_session.query(Group).filter_by(group_id=group_id).one()
@@ -171,25 +164,25 @@ def add_transaction_entry(user_id, group_id, store, total, points_redeemed):
     return new_transaction
 
 
-def get_user_details(user_id):
-    home_db_session = home_db_connection.get_session()
-    peer_db_session = peer_db_connection.get_session()
+def get_user_details(user_id, region=utils.REGION_ID):
+    db_session = DB_CONNECTION[region].get_session()
 
-    user = home_db_session.query(User).filter_by(user_id=user_id).first()
+    user = db_session.query(User).filter_by(user_id=user_id).first()
     if not user:
         print("User not found!")
         return None
     return user
 
 
-def get_user_groups_by_username(user_name):
-    db_session = home_db_connection.get_session()
+def get_user_groups_by_username(user_name, region=utils.REGION_ID):
+    db_session = DB_CONNECTION[region].get_session()
     user = db_session.query(User).filter_by(user_name=user_name).first()
     if not user:
         print("User not found!")
         return None
     sr_groups = [{"group_id": group.group_id, "name": group.name, "owner_id": group.owner_id} for group in user.groups]
     group_member_mr_mapping = db_session.query(GroupMemberMR).filter_by(user_id=user.user_id).all()
+    # TODO based on region_id of group do a recursive loopkup
     mr_groups = [mapping.group_id for mapping in group_member_mr_mapping]
 
     return {
@@ -198,11 +191,8 @@ def get_user_groups_by_username(user_name):
     }
 
 
-def get_user_details_by_username(user_name, user_region="home"):
-    if user_region == "home":
-        db_session = home_db_connection.get_session()
-    else:
-        db_session = peer_db_connection.get_session()
+def get_user_details_by_username(user_name, user_region):
+    db_session = DB_CONNECTION[user_region].get_session()
 
     user = db_session.query(User).filter_by(user_name=user_name).first()
     if not user:
@@ -211,18 +201,17 @@ def get_user_details_by_username(user_name, user_region="home"):
     return user
 
 
-def get_group_details(group_id):
-    home_db_session = home_db_connection.get_session()
-    peer_db_session = peer_db_connection.get_session()
+def get_group_details(group_id, region):
+    db_session = DB_CONNECTION[region].get_session()
 
-    group = home_db_session.query(Group).filter_by(group_id=group_id).first()
+    group = db_session.query(Group).filter_by(group_id=group_id).first()
     if not group:
         print("Group not found!")
         return None
 
     # if multi region entry, get members from group_member
     if group.multi_region:
-        group_member_mr_mapping = home_db_session.query(GroupMemberMR).filter_by(group_id=group_id).all()
+        group_member_mr_mapping = db_session.query(GroupMemberMR).filter_by(group_id=group_id).all()
         members = [member.user_id for member in group_member_mr_mapping]
     else:
         # Load members lazily
@@ -237,74 +226,77 @@ def get_group_details(group_id):
     return group_details
 
 
-def add_member_to_group(user_id, group_id, user_region, multi_region=False):
-    home_db_session = home_db_connection.get_session()
+def get_group_by_name(group_name, region=utils.REGION_ID):
+    home_db_session = DB_CONNECTION[region].get_session()
 
-    group = home_db_session.query(Group).filter_by(group_id=group_id).first()
+    group = home_db_session.query(Group).filter_by(name=group_name).first()
     if not group:
-        return False, "Group not found!"
+        print("Group not found!")
+        return None
 
-    if multi_region:
-        if group.multi_region != multi_region:
-            return False, "Group is not multi region while the query is multi region!"
-        group_member_mr_mapping = home_db_session.query(GroupMemberMR).filter_by(group_id=group_id).all()
+    return group
+
+
+def add_member_to_group(member_id, group_id, member_region, group_region):
+    group_db_session = DB_CONNECTION[group_region].get_session()
+    group = group_db_session.query(Group).filter_by(group_id=group_id).first()
+
+    if group.multi_region:
+        group_member_mr_mapping = group_db_session.query(GroupMemberMR).filter_by(group_id=group_id).all()
         members = [member.user_id for member in group_member_mr_mapping]
-        if user_id in members:
+        if len(members) >= 4:
+            return False, "Group is full!"
+
+        if member_id in members:
             return False, "User already in group!"
 
         mr_mapping = GroupMemberMR(
-            group_id=group.group_id,
-            user_id=user_id,
-            group_region_id=utils.HOME_REGION_ID,
-            user_region_id=utils.HOME_REGION_ID if user_region == "home" else utils.PEER_REGION_ID
+            group_id=group_id,
+            user_id=member_id,
+            group_region_id=utils.REGIONS_INT[group_region],
+            user_region_id=utils.REGIONS_INT[member_region]
         )
-        home_db_session.add(mr_mapping)
-        home_db_session.commit()
-        print(f"User {user_id} added to group {group_id}.")
+        for region in DB_CONNECTION:
+            db_session = DB_CONNECTION[region].get_session()
+            db_session.add(mr_mapping)
+            db_session.commit()
+        print(f"User '{member_id}' added to group '{group_id}'.")
         return True, None
 
     else:
-        if group.multi_region != multi_region:
-            return False, "Group is multi region while the query in not multi region!"
-        user = home_db_session.query(User).filter_by(user_id=user_id).first()
-        if not user:
-            return False, "User not found!"
-        if user in group.members:
+        member = group_db_session.query(User).filter_by(user_id=member_id).first()
+        if member in group.members:
             return False, "User already in group!"
-        if len(group.members) >= 4:  # Assuming a maximum of 4 members per group
+        if len(group.members) >= 4:
             return False, "Group is full!"
-        group.members.append(user)
-        home_db_session.commit()
-        print(f"User {user_id} added to group {group_id}.")
+        group.members.append(member)
+        group_db_session.commit()
+        print(f"User {member_id} added to group {group_id}.")
         return True, None
 
 
 def get_item(item_id):
-    home_db_session = home_db_connection.get_session()
-    peer_db_session = peer_db_connection.get_session()
+    home_db_session = HOME_DB_CONNECTION.get_session()
 
     return home_db_session.query(Item).filter_by(item_id=item_id).first()
 
 
 def get_items():
-    home_db_session = home_db_connection.get_session()
-    peer_db_session = peer_db_connection.get_session()
+    home_db_session = HOME_DB_CONNECTION.get_session()
 
     items = home_db_session.query(Item).all()
     return items
 
 
 def get_user_transactions(user_id):
-    home_db_session = home_db_connection.get_session()
-    peer_db_session = peer_db_connection.get_session()
+    home_db_session = HOME_DB_CONNECTION.get_session()
 
     transactions = home_db_session.query(Transaction).filter_by(user_id=user_id).all()
     return transactions
 
 
 def get_group_transactions(group_id):
-    home_db_session = home_db_connection.get_session()
-    peer_db_session = peer_db_connection.get_session()
+    home_db_session = HOME_DB_CONNECTION.get_session()
 
     transactions = home_db_session.query(Transaction).filter_by(group_id=group_id).all()
     return transactions
