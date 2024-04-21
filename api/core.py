@@ -66,8 +66,12 @@ def add_transaction_with_items():
     # Extract the current user's identity from the JWT token
     current_user_username = get_jwt_identity()
 
+    region = request.json.get('region', utils.REGION_ID)
+    if region not in utils.REGIONS:
+        return jsonify({'error': f'Invalid region, allowed values - {utils.REGIONS}'}), 400
+
     # Find the user by username
-    user = app.config["db_query"].get_user_details_by_username(current_user_username)
+    user = app.config["db_query"].get_user_details_by_username(current_user_username, region)
     if not user:
         return jsonify({"msg": "User not found"}), 404
 

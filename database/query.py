@@ -82,9 +82,17 @@ def add_item(name, price):
 
 
 def add_transaction(user_id, group_id, store, points_redeemed, items):
-    # Start a transaction to ensure atomicity
-    home_db_session = HOME_DB_CONNECTION.get_session()
     try:
+        home_db_session = HOME_DB_CONNECTION.get_session()
+
+        # check if both are part of multi region group
+        mr_mapping = home_db_session.query(GroupMemberMR).filter_by(group_id=group_id, user_id=user_id).first()
+        if mr_mapping:
+            user_region = utils.REGIONS_INT_REV[mr_mapping.user_region_id]
+            group_region = utils.REGIONS_INT_REV[mr_mapping.group_region_id]
+        else:
+            user_region = group_region = utils.REGION_ID
+
         total = 0
         for item_data in items:
             item_id = item_data['item_id']
@@ -94,73 +102,88 @@ def add_transaction(user_id, group_id, store, points_redeemed, items):
                 raise Exception("Item not found")
 
             total += item.price * quantity
+        home_db_session.close()
+
+        # redeem points
+        points = modify_group_points(group_region, group_id, total, points_redeemed)
+        if not points:
+            raise Exception("Failed to modify group points.")
+        points_awarded, points_redeemed = points
 
         # Add the transaction
-        transaction = add_transaction_entry(home_db_session, user_id, group_id, store, total, points_redeemed)
-        if not transaction:
+        transaction_details = add_transaction_entry(user_region, user_id, group_id, store, total, points_awarded,
+                                                    points_redeemed, items)
+        if not transaction_details:
             raise Exception("Failed to add transaction")
+
+        return transaction_details
+    except Exception as e:
+        log.error(f"Failed to add transaction due to {e}")
+        return None, None
+
+
+def modify_group_points(region, group_id, total, points_redeemed):
+    db_session = DB_CONNECTION[region].get_session()
+    try:
+        group = db_session.query(Group).filter_by(group_id=group_id).one()
+
+        # Check if the group has enough points
+        if group.points < points_redeemed:
+            log.error("Not enough points in the group to redeem.")
+            return None
+
+        group.points -= points_redeemed
+        if points_redeemed == 0:
+            points_awarded = math.ceil(total / 10)
+            group.points += points_awarded
+        else:
+            points_awarded = 0
+        db_session.commit()
+        log.info(f"New group points: {group.points}")
+        return points_awarded, points_redeemed
+    except Exception as e:
+        log.error(f"Failed to modify group points due to {e}")
+        db_session.rollback()
+
+
+def add_transaction_entry(region, user_id, group_id, store, total, points_awarded, points_redeemed, items):
+    db_session = DB_CONNECTION[region].get_session()
+    try:
+        effective_total = total - points_redeemed
+
+        # Create and add the transaction
+        new_transaction = Transaction(
+            user_id=user_id,
+            group_id=group_id,
+            store=store,
+            total=effective_total,
+            points_redeemed=points_redeemed,
+            points_awarded=points_awarded
+        )
+        db_session.add(new_transaction)
 
         # Iterate over each item in the transaction and add it
         transaction_items = []
         for item_data in items:
             item_id = item_data['item_id']
             quantity = item_data['quantity']
-            item = home_db_session.query(Item).filter_by(item_id=item_id).first()
+            item = db_session.query(Item).filter_by(item_id=item_id).first()
             if not item:
                 raise Exception("Item not found")
 
             item_total = item.price * quantity
-            transaction_item = TransactionItem(transaction_id=transaction.transaction_id, item_id=item_id,
+            transaction_item = TransactionItem(transaction_id=new_transaction.transaction_id, item_id=item_id,
                                                quantity=quantity,
                                                item_total=item_total)
             transaction_items.append(transaction_item.to_dict())
-            home_db_session.add(transaction_item)
-        home_db_session.commit()
-        return transaction.to_dict(), transaction_items
-
+            db_session.add(transaction_item)
+        db_session.commit()
+        log.info(
+            f"Transaction added for user {user_id} in group {group_id}. Points redeemed: {points_redeemed}.")
+        return new_transaction.to_dict(), transaction_items
     except Exception as e:
         log.error(f"Failed to add transaction due to {e}")
-        return None, None
-
-
-def add_transaction_entry(db_session, user_id, group_id, store, total, points_redeemed):
-    # Check if the group has enough points
-    group = db_session.query(Group).filter_by(group_id=group_id).one()
-    if group.points < points_redeemed:
-        log.error("Not enough points in the group to redeem.")
-        return None
-
-    # Deduct points from group
-    group.points -= points_redeemed
-
-    # Calculate the total after redeeming points
-    # Assuming each point is worth 1 unit of currency
-    effective_total = total - points_redeemed
-
-    # Calculate points awarded (assuming 1 point awarded for every 10 units of currency spent, and no points
-    # awarded if points are redeemed)
-    if points_redeemed == 0:
-        points_awarded = math.ceil(effective_total / 10)
-        group.points += points_awarded
-    else:
-        points_awarded = 0
-
-    # Create and add the transaction
-    new_transaction = Transaction(
-        user_id=user_id,
-        group_id=group_id,
-        store=store,
-        total=effective_total,
-        points_redeemed=points_redeemed,
-        points_awarded=points_awarded
-    )
-    db_session.add(new_transaction)
-
-    log.info(
-        f"Transaction added for user {user_id} in group {group_id}. Points redeemed: {points_redeemed}. New group points: {group.points}")
-
-    return new_transaction
-
+        db_session.rollback()
 
 def get_user_details(user_id, region=utils.REGION_ID):
     db_session = DB_CONNECTION[region].get_session()

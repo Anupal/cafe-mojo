@@ -5,6 +5,7 @@ REGION_URLS = {}
 
 REGIONS = os.environ.get("REGIONS").split(",")
 REGIONS_INT = {region: i for i, region in enumerate(REGIONS)}
+REGIONS_INT_REV = {i: region for i, region in enumerate(REGIONS)}
 for region in REGIONS:
     user = os.environ.get(f"{region}_DB_USER")
     password = os.environ.get(f"{region}_DB_PASSWORD")

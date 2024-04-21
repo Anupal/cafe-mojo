@@ -68,14 +68,13 @@ class Transaction(Base):
     __tablename__ = 'transaction'
     transaction_id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('user.user_id'))
-    group_id = Column(Integer, ForeignKey('group.group_id'))
+    group_id = Column(Integer)
     timestamp = Column(DateTime, default=datetime.now)
     store = Column(String)
     total = Column(Float)
     points_redeemed = Column(Integer)
     points_awarded = Column(Integer)
     user = relationship("User", backref="transactions")
-    group = relationship("Group", backref="transactions")
 
     def __init__(self, user_id, group_id, store, total, points_redeemed, points_awarded):
         super(Transaction, self).__init__()
