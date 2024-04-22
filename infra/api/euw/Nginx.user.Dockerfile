@@ -1,6 +1,6 @@
 FROM nginx:stable-alpine
 
-COPY ./infra/api/nginx_euw.conf /etc/nginx/conf.d/default.conf
+COPY ./infra/api/euw/nginx.user.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
