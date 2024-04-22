@@ -6,7 +6,7 @@ from api_client import APIClient
 user_logged_in = False
 transaction_service_url = None
 user_info_service_url = None
-apiClient = None
+apiClient: APIClient = APIClient()
 
 
 @click.group()
@@ -170,7 +170,18 @@ def create_group():
         clear_screen()
         click.echo("Create a new group:")
         group_name = click.prompt("Please enter the group name: ")
-        response = apiClient.create_group(group_name)
+        multi_region_support = False
+        while multi_region_support is not "y" and multi_region_support is not "n":
+            if type(multi_region_support) is str:
+                click.echo("Please only choose an option between 'y' and 'n'. ,press q to abort")
+            multi_region_support = click.prompt("Do you want to support multiple regions? (y/n)").lower()
+            if multi_region_support == 'q':
+                return
+        if multi_region_support == 'y':
+            multi_region_support = True
+        else:
+            multi_region_support = False
+        response = apiClient.create_group(group_name, multi_region_support)
 
         if response.status_code == 201:
             click.echo("Group successfully created.")

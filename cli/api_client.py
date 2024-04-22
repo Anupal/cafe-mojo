@@ -32,10 +32,10 @@ class APIClient:
         response = requests.get(f"{self.user_info_service_url}/user/memberships", headers=headers)
         return response
 
-    def create_group(self, group_name):
+    def create_group(self, group_name, multi_region=False):
         """Create a new group"""
         headers = self.get_authenticated_header()
-        data = {"name": group_name}
+        data = {"name": group_name, "multi_region": multi_region}
         response = requests.post(f"{self.user_info_service_url}/group/add", headers=headers, json=data)
         return response
 
