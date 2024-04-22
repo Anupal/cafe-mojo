@@ -1,7 +1,0 @@
-# spock extension
-comment = 'PostgreSQL Logical Replication'
-default_version = '__SPOCK_VERSION__'
-module_pathname = '$libdir/spock'
-relocatable = false
-__REQUIRES__
-schema = spock
