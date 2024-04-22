@@ -28,6 +28,7 @@ services:
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=postgres
       - POSTGRESQL_DATABASE=cafe_mojo
+      - POSTGRESQL_DEFAULT_TRANSACTION_ISOLATION=serializable
       - REPMGR_PASSWORD=otherPassword
       - REPMGR_PRIMARY_HOST=euw-01
       - REPMGR_PARTNER_NODES=euw-01,euw-02
@@ -59,6 +60,7 @@ services:
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=postgres
       - POSTGRESQL_DATABASE=cafe_mojo
+      - POSTGRESQL_DEFAULT_TRANSACTION_ISOLATION=serializable
       - REPMGR_PASSWORD=otherPassword
       - REPMGR_PRIMARY_HOST=euw-01
       - REPMGR_PARTNER_NODES=euw-01,euw-02
@@ -90,6 +92,7 @@ services:
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=postgres
       - POSTGRESQL_DATABASE=cafe_mojo
+      - POSTGRESQL_DEFAULT_TRANSACTION_ISOLATION=serializable
       - REPMGR_PASSWORD=otherPassword
       - REPMGR_PRIMARY_HOST=usw-01
       - REPMGR_PARTNER_NODES=usw-01,usw-02
@@ -121,6 +124,7 @@ services:
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=postgres
       - POSTGRESQL_DATABASE=cafe_mojo
+      - POSTGRESQL_DEFAULT_TRANSACTION_ISOLATION=serializable
       - REPMGR_PASSWORD=otherPassword
       - REPMGR_PRIMARY_HOST=usw-01
       - REPMGR_PARTNER_NODES=usw-01,usw-02

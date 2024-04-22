@@ -125,7 +125,7 @@ def add_transaction(user_id, group_id, store, points_redeemed, items):
 def modify_group_points(region, group_id, total, points_redeemed):
     db_session = DB_CONNECTION[region].get_session()
     try:
-        group = db_session.query(Group).filter_by(group_id=group_id).one()
+        group = db_session.query(Group).filter_by(group_id=group_id).with_for_update().one()
 
         # Check if the group has enough points
         if group.points < points_redeemed:
@@ -144,6 +144,8 @@ def modify_group_points(region, group_id, total, points_redeemed):
     except Exception as e:
         log.error(f"Failed to modify group points due to {e}")
         db_session.rollback()
+    finally:
+        db_session.close()
 
 
 def add_transaction_entry(region, user_id, group_id, store, total, points_awarded, points_redeemed, items):
@@ -184,6 +186,8 @@ def add_transaction_entry(region, user_id, group_id, store, total, points_awarde
     except Exception as e:
         log.error(f"Failed to add transaction due to {e}")
         db_session.rollback()
+    finally:
+        db_session.close()
 
 def get_user_details(user_id, region=utils.REGION_ID):
     db_session = DB_CONNECTION[region].get_session()

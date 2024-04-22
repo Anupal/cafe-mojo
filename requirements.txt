@@ -3,3 +3,4 @@ flask_jwt_extended
 sqlalchemy
 click
 psycopg2
+requests
