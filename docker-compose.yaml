@@ -1,3 +1,20 @@
+x-region-connectivity:
+  &region-connectivity
+  # All regions
+  REGIONS: "EUW,USW"
+  # EUW DETAILS
+  EUW_DB_HOSTS: euw_primary,euw_secondary
+  EUW_DB_PORTS: 5432,5432
+  EUW_DB_USER: postgres
+  EUW_DB_PASSWORD: password
+  EUW_DB_DATABASE: cafe_mojo
+  # USW DETAILS
+  USW_DB_HOSTS: usw_primary,usw_secondary
+  USW_DB_PORTS: 5432,5432
+  USW_DB_USER: postgres
+  USW_DB_PASSWORD: password
+  USW_DB_DATABASE: cafe_mojo
+
 services:
   euw_primary:
     hostname: euw-01
@@ -11,6 +28,7 @@ services:
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=postgres
       - POSTGRESQL_DATABASE=cafe_mojo
+      - POSTGRESQL_DEFAULT_TRANSACTION_ISOLATION=serializable
       - REPMGR_PASSWORD=otherPassword
       - REPMGR_PRIMARY_HOST=euw-01
       - REPMGR_PARTNER_NODES=euw-01,euw-02
@@ -42,6 +60,7 @@ services:
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=postgres
       - POSTGRESQL_DATABASE=cafe_mojo
+      - POSTGRESQL_DEFAULT_TRANSACTION_ISOLATION=serializable
       - REPMGR_PASSWORD=otherPassword
       - REPMGR_PRIMARY_HOST=euw-01
       - REPMGR_PARTNER_NODES=euw-01,euw-02
@@ -73,6 +92,7 @@ services:
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=postgres
       - POSTGRESQL_DATABASE=cafe_mojo
+      - POSTGRESQL_DEFAULT_TRANSACTION_ISOLATION=serializable
       - REPMGR_PASSWORD=otherPassword
       - REPMGR_PRIMARY_HOST=usw-01
       - REPMGR_PARTNER_NODES=usw-01,usw-02
@@ -104,6 +124,7 @@ services:
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=postgres
       - POSTGRESQL_DATABASE=cafe_mojo
+      - POSTGRESQL_DEFAULT_TRANSACTION_ISOLATION=serializable
       - REPMGR_PASSWORD=otherPassword
       - REPMGR_PRIMARY_HOST=usw-01
       - REPMGR_PARTNER_NODES=usw-01,usw-02
@@ -128,18 +149,8 @@ services:
       context: .
       dockerfile: ./infra/api/API.Dockerfile
     environment:
-      # HOME DETAILS
-      HOME_DB_HOSTS: euw_primary,euw_secondary
-      HOME_DB_PORTS: 5432,5432
-      HOME_DB_USER: postgres
-      HOME_DB_PASSWORD: password
-      HOME_DB_DATABASE: cafe_mojo
-      # PEER DETAILS
-      PEER_DB_HOSTS: usw_primary,usw_secondary
-      PEER_DB_PORTS: 5432,5432
-      PEER_DB_USER: postgres
-      PEER_DB_PASSWORD: password
-      PEER_DB_DATABASE: cafe_mojo
+      REGION_ID: EUW
+      <<: *region-connectivity
     deploy:
       replicas: 1
     networks:
@@ -165,18 +176,8 @@ services:
       context: .
       dockerfile: ./infra/api/API.Dockerfile
     environment:
-      # HOME DETAILS
-      HOME_DB_HOSTS: usw_primary,usw_secondary
-      HOME_DB_PORTS: 5432,5432
-      HOME_DB_USER: postgres
-      HOME_DB_PASSWORD: password
-      HOME_DB_DATABASE: cafe_mojo
-      # PEER DETAILS
-      PEER_DB_HOSTS: euw_primary,euw_secondary
-      PEER_DB_PORTS: 5432,5432
-      PEER_DB_USER: postgres
-      PEER_DB_PASSWORD: password
-      PEER_DB_DATABASE: cafe_mojo
+      REGION_ID: USW
+      <<: *region-connectivity
     deploy:
       replicas: 1
     networks:
