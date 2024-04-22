@@ -113,7 +113,6 @@ def add_item():
 
 
 @app.route('/item/all', methods=['GET'])
-@jwt_required()
 def get_items():
     items = app.config["db_query"].get_items()
     items_data = [{"item_id": item.item_id, "name": item.name, "price": item.price} for item in items]
