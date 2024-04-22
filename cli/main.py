@@ -4,6 +4,10 @@ import click
 from api_client import APIClient
 
 user_logged_in = False
+transaction_service_url = None
+user_info_service_url = None
+apiClient = None
+
 
 @click.group()
 def cli():
@@ -13,6 +17,28 @@ def cli():
 
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
+
+
+def connection_config():
+    """Configure URLs for backends"""
+    global transaction_service_url, user_info_service_url, apiClient
+
+    service_connection_tested = False
+    first_try = True
+    while not service_connection_tested:
+        clear_screen()
+        if first_try:
+            click.echo("Welcome to Cafe CLI Tool!")
+            first_try = False
+        else:
+            click.echo("Something went wrong when trying to connect to your services, please try again!")
+
+        transaction_service_url = click.prompt("Please enter your transaction service URL", type=str)
+        user_info_service_url = click.prompt("Please enter your user info service URL", type=str)
+
+        apiClient = APIClient(transaction_service_url, user_info_service_url)
+        service_connection_tested = apiClient.are_services_healthy()
+
 
 @click.command()
 def main_menu():
@@ -44,7 +70,7 @@ def register():
     click.echo("Register Page:")
     username = click.prompt('Please enter a username')
     password = click.prompt('Please enter a password', hide_input=True)
-    response = APIClient.signup(username, password)
+    response = apiClient.signup(username, password)
     if response.status_code == 201:
         click.echo("User successfully registered.")
     elif response.status_code == 400:
@@ -62,7 +88,7 @@ def login():
     while True:
         username = click.prompt('Please enter your username')
         password = click.prompt('Please enter your password', hide_input=True)
-        response = APIClient.login(username, password)
+        response = apiClient.login(username, password)
 
         if response.status_code == 200:
             global user_logged_in
@@ -118,11 +144,14 @@ def user_menu():
 def view_points_and_memberships():
     clear_screen()
     click.echo("Viewing points and membership information...")
-    response = APIClient.get_user_memberships()
+    response = apiClient.get_user_memberships()
     if response.status_code == 200:
         memberships = response.json()
-        click.echo("Your group memberships: ")
-        for group in memberships:
+        click.echo("Your group single region memberships: ")
+        for group in memberships["single_region"]:
+            click.echo(f"Group ID: {group['group_id']}, Name: {group['name']}, Owner ID: {group['owner_id']}")
+        click.echo("Your group multi region memberships: ")
+        for group in memberships["multi_region"]:
             click.echo(f"Group ID: {group['group_id']}, Name: {group['name']}, Owner ID: {group['owner_id']}")
     elif response.status_code == 401:
         error_msg = response.json().get('msg', 'Unauthorized access. Please log in again.')
@@ -141,7 +170,7 @@ def create_group():
         clear_screen()
         click.echo("Create a new group:")
         group_name = click.prompt("Please enter the group name: ")
-        response = APIClient.create_group(group_name)
+        response = apiClient.create_group(group_name)
 
         if response.status_code == 201:
             click.echo("Group successfully created.")
@@ -166,7 +195,7 @@ def add_user_to_group():
     group_id = click.prompt("Enter the group ID", type=int)
     user_name = click.prompt("Enter the username of the user you want to add to the group")
 
-    response = APIClient.add_member_to_group(group_id=group_id, user_name=user_name)
+    response = apiClient.add_member_to_group(group_id=group_id, user_name=user_name)
 
     if response.status_code == 201:
         click.echo("User successfully added to the group.")
@@ -186,7 +215,7 @@ def add_user_to_group():
 def view_group_info():
     clear_screen()
     group_id = click.prompt("Please enter the group ID", type=int)
-    response = APIClient.get_group_details(group_id)
+    response = apiClient.get_group_details(group_id)
 
     if response.status_code == 200:
         group_details = response.json()
@@ -238,7 +267,7 @@ def create_transaction():
     total_price = sum(item['price'] * item['quantity'] for item in selected_items)
     click.echo(f"Total price before points redemption: {total_price}")
 
-    response = APIClient.get_group_details(group_id)
+    response = apiClient.get_group_details(group_id)
     if response.status_code == 200:
         group_details = response.json()
         group_points = group_details['points']
@@ -253,7 +282,7 @@ def create_transaction():
             break
         click.echo("Cannot redeem more points than the group has. Please try again.")
 
-    response = APIClient.create_transaction(group_id, store, points_redeemed, selected_items)
+    response = apiClient.create_transaction(group_id, store, points_redeemed, selected_items)
 
     if response.status_code == 201:
         click.echo("Transaction created successfully!")
@@ -276,7 +305,7 @@ def create_transaction():
 
 
 def fetch_and_display_items():
-    response = APIClient.get_items()
+    response = apiClient.get_items()
 
     if response.status_code == 200:
         items = response.json()
@@ -315,7 +344,7 @@ def add_item():
         click.echo(f"Name: {name}, Price: {price}")
         confirm = click.confirm("Are you sure you want to add this item?")
         if confirm:
-            response = APIClient.add_item(name, price)
+            response = apiClient.add_item(name, price)
 
             if response.status_code == 201:
                 click.echo("Item added successfully!")
@@ -335,14 +364,14 @@ def add_item():
                 return
 
 
-
 def logout():
     """Logout the current user."""
     global user_logged_in
-    APIClient.set_access_token(None)
+    apiClient.set_access_token(None)
     user_logged_in = False
     click.echo("You have been logged out.")
 
 
 if __name__ == '__main__':
+    connection_config()
     main_menu()
