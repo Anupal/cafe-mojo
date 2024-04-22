@@ -1,5 +1,7 @@
 import os
 
+JWT_KEY = os.environ.get('JWT_KEY', "DistributedSecret")
+
 REGION_ID = os.environ.get("REGION_ID")
 REGION_URLS = {}
 

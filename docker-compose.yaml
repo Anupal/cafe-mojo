@@ -144,10 +144,10 @@ services:
     ports:
       - "5441:5432"
 
-  euw_api:
+  euw_uapi:
     build:
       context: .
-      dockerfile: ./infra/api/API.Dockerfile
+      dockerfile: infra/api/User.API.Dockerfile
     environment:
       REGION_ID: EUW
       <<: *region-connectivity
@@ -160,21 +160,48 @@ services:
       - euw_primary
       - euw_secondary
 
-  euw_api_lb:
+  euw_uapi_lb:
     build:
       context: .
-      dockerfile: ./infra/api/Nginx_euw.Dockerfile
+      dockerfile: infra/api/euw/Nginx.user.Dockerfile
     ports:
       - "8080:8080"
     networks:
       - eu_west
     depends_on:
-      - euw_api
+      - euw_uapi
 
-  usw_api:
+  euw_tapi:
     build:
       context: .
-      dockerfile: ./infra/api/API.Dockerfile
+      dockerfile: infra/api/Transaction.API.Dockerfile
+    environment:
+      REGION_ID: EUW
+      <<: *region-connectivity
+    deploy:
+      replicas: 1
+    networks:
+      - eu_west
+      - global
+    depends_on:
+      - euw_primary
+      - euw_secondary
+
+  euw_tapi_lb:
+    build:
+      context: .
+      dockerfile: infra/api/euw/Nginx.transaction.Dockerfile
+    ports:
+      - "8081:8080"
+    networks:
+      - eu_west
+    depends_on:
+      - euw_tapi
+
+  usw_uapi:
+    build:
+      context: .
+      dockerfile: infra/api/User.API.Dockerfile
     environment:
       REGION_ID: USW
       <<: *region-connectivity
@@ -187,16 +214,43 @@ services:
       - usw_primary
       - usw_secondary
 
-  usw_api_lb:
+  usw_uapi_lb:
     build:
       context: .
-      dockerfile: ./infra/api/Nginx_usw.Dockerfile
+      dockerfile: infra/api/usw/Nginx.user.Dockerfile
     ports:
-      - "8081:8080"
+      - "8082:8080"
     networks:
       - us_west
     depends_on:
-      - usw_api
+      - usw_uapi
+
+  usw_tapi:
+    build:
+      context: .
+      dockerfile: infra/api/Transaction.API.Dockerfile
+    environment:
+      REGION_ID: USW
+      <<: *region-connectivity
+    deploy:
+      replicas: 1
+    networks:
+      - us_west
+      - global
+    depends_on:
+      - usw_primary
+      - usw_secondary
+
+  usw_tapi_lb:
+    build:
+      context: .
+      dockerfile: infra/api/usw/Nginx.transaction.Dockerfile
+    ports:
+      - "8083:8080"
+    networks:
+      - us_west
+    depends_on:
+      - usw_tapi
 
 networks:
   eu_west:
